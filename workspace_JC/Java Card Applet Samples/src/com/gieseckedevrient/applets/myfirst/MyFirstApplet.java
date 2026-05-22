@@ -94,8 +94,10 @@ public class MyFirstApplet extends Applet {
 
     // ===================== Guthaben (W01.4 f) =====================
     // EUR und CENT getrennt, da 999.999 Cents nicht in short passen.
-    private short balanceEuros;
-    private short balanceCents;
+    private short   balanceEuros;
+    private short   balanceCents;
+    // Debit nur erlaubt, wenn Age18 in dieser Session true zurueckgegeben hat.
+    private boolean ageVerified;
 
     // ===================== Logbuch-State (W01.4 h) =====================
     private byte[] logBuf;
@@ -172,6 +174,7 @@ public class MyFirstApplet extends Applet {
         pin2.reset();
         pin3.reset();
         puk.reset();
+        ageVerified = false;
     }
 
     // =============================================================
@@ -397,11 +400,13 @@ public class MyFirstApplet extends Applet {
     }
 
     // =============================================================
-    // DEBIT (W01.4 f) - PIN3, alle 3 PINs muessen geaendert sein
+    // DEBIT (W01.4 f) - PIN3, alle 3 PINs geaendert, Alter >= 18 per Age18 bestaetigt
     // =============================================================
     private void debit(APDU apdu) {
         if (!pin3.isValidated())   ISOException.throwIt(ISO7816.SW_SECURITY_STATUS_NOT_SATISFIED);
         if (!allPinsChanged())     ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
+        // Bezahlfunktion voruebergehend blockiert, bis Age18 in dieser Session true ergab.
+        if (!ageVerified)          ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
 
         byte[] buf = apdu.getBuffer();
         receiveExact(apdu, AMOUNT_LEN);
@@ -496,9 +501,12 @@ public class MyFirstApplet extends Applet {
         // Geburtstag in diesem Jahr noch nicht erreicht -> ein Jahr abziehen
         if (tM < bM || (tM == bM && tD < bD)) age = (short) (age - (short) 1);
 
-        buf[0] = (byte) 0x00;
-        if (age >= 18) {
+        if (age >= (short) 18) {
             buf[0] = (byte) 0x01;
+            ageVerified = true;
+        } else {
+            buf[0] = (byte) 0x00;
+            ageVerified = false;
         }
         apdu.setOutgoing();
         apdu.setOutgoingLength((short) 1);

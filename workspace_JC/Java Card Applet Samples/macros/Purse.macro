@@ -118,6 +118,26 @@
    </Answer>
   </SendApduTask>
 
+  <!-- Age18: Debit ist vor erfolgreicher Age18-Pruefung gesperrt. -->
+  <SendApduTask Name="Verify PIN3 before age check">
+   <Command>00 20 00 03 04 33 33 33 33</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+  <SendApduTask Name="Debit without Age18 (expect 69 85)">
+   <Command>00 40 00 00 03 00 01 00</Command>
+   <Answer>
+    <Sw>69 85</Sw>
+   </Answer>
+  </SendApduTask>
+  <SendApduTask Name="Verify PIN1 for Age18">
+   <Command>00 20 00 01 04 31 31 31 31</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
   <!-- Age18: heutiges Datum muss als DDMMYYYY uebergeben werden. -->
   <SendApduTask Name="Age18 on 22.05.2026 (expect true)">
    <Command>00 18 00 00 08 32 32 30 35 32 30 32 36 01</Command>
