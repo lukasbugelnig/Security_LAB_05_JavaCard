@@ -48,7 +48,7 @@ public class MyFirstApplet extends Applet {
     private static final byte INS_CREDIT  = (byte) 0x30;
     private static final byte INS_DEBIT   = (byte) 0x40;
     private static final byte INS_BALANCE = (byte) 0x50;
-    private static final byte INS_UNLOCK  = (byte) 0x70;
+    private static final byte INS_UNLOCK  = (byte) 0x78;
     private static final byte INS_LOG     = (byte) 0x76;
     private static final byte INS_STATUS  = (byte) 0xF2;
 

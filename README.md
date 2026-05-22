@@ -13,7 +13,7 @@ Implementiert ist die elektronische Geldboerse im bisherigen MyFirst-Slot:
 - `CREDIT` (`INS 30`): laedt nach PIN2, mit Euro/Cent und Overflow-Schutz bis EUR 9999,99.
 - `DEBIT` (`INS 40`): bucht nach PIN3 ab, mit Underflow-Schutz.
 - `BALANCE` (`INS 50`): liefert das Guthaben ohne PIN.
-- `UNLOCK` (`INS 70`): entsperrt PIN3 nach drei Fehlversuchen mit 8-stelligem PUK.
+- `UNLOCK` (`INS 78`): entsperrt PIN3 nach drei Fehlversuchen mit 8-stelligem PUK.
 - `LOG` (`INS 76`): liest nach PIN3 die letzten 10 Transaktionen als FIFO.
 
 Nicht umgesetzt sind nur die optionalen Punkte aus W01.4i und die optionale PC-Komponente W01.5.

@@ -235,7 +235,7 @@
    </Answer>
   </SendApduTask>
   <SendApduTask Name="Unlock PIN3 with PUK and set PIN3 to 4444">
-   <Command>00 70 00 00 0C 30 30 30 30 30 30 30 30 34 34 34 34</Command>
+   <Command>00 78 00 00 0C 30 30 30 30 30 30 30 30 34 34 34 34</Command>
    <Answer>
     <Sw>90 00</Sw>
    </Answer>
