@@ -52,6 +52,8 @@ public class MyFirstApplet extends Applet {
     private static final byte INS_LOG     = (byte) 0x76;
     private static final byte INS_STATUS  = (byte) 0xF2;
 
+    private static final short SW_VERIFY_FAIL_BASE = (short) 0x63C0;
+
     // ===================== PIN/PUK-Parameter =====================
     private static final byte PIN_TRY_LIMIT = (byte) 3;
     private static final byte PIN_SIZE      = (byte) 4;
@@ -73,6 +75,7 @@ public class MyFirstApplet extends Applet {
     // ===================== Logbuch =====================
     private static final short LOG_ENTRIES     = (short) 10;
     private static final short LOG_ENTRY_BYTES = (short) 4;    // type + 2 EUR + 1 CENT
+    private static final short LOG_BUF_BYTES   = (short) 40;
     private static final byte  TX_CREDIT       = (byte) 0x01;
     private static final byte  TX_DEBIT        = (byte) 0x02;
 
@@ -125,7 +128,7 @@ public class MyFirstApplet extends Applet {
         pin3.update(zeros, (short) 0, PIN_SIZE);
         puk.update(zeros, (short) 0, PUK_SIZE);
 
-        logBuf = new byte[(short) (LOG_ENTRIES * LOG_ENTRY_BYTES)];
+        logBuf = new byte[LOG_BUF_BYTES];
 
         register(bArray, (short) (bOffset + 1), bArray[bOffset]);
     }
@@ -216,10 +219,28 @@ public class MyFirstApplet extends Applet {
 
     private short asciiToShort(byte[] src, short off, short len) {
         short n = 0;
+        short digit;
         for (short i = 0; i < len; i++) {
-            n = (short) (n * 10 + (src[(short) (off + i)] - (byte) '0'));
+            digit = (short) (src[(short) (off + i)] - (byte) '0');
+            n = (short) (n * (short) 10);
+            n = (short) (n + digit);
         }
         return n;
+    }
+
+    private short logOffset(short index) {
+        switch (index) {
+            case 0: return (short) 0;
+            case 1: return (short) 4;
+            case 2: return (short) 8;
+            case 3: return (short) 12;
+            case 4: return (short) 16;
+            case 5: return (short) 20;
+            case 6: return (short) 24;
+            case 7: return (short) 28;
+            case 8: return (short) 32;
+            default: return (short) 36;
+        }
     }
 
     // =============================================================
@@ -231,8 +252,8 @@ public class MyFirstApplet extends Applet {
         receiveExact(apdu, PIN_SIZE);
         if (!p.check(buf, ISO7816.OFFSET_CDATA, PIN_SIZE)) {
             // ISO 7816-4: 0x63Cx mit x = verbleibende Versuche
-            short remaining = (short) (p.getTriesRemaining() & 0x0F);
-            ISOException.throwIt((short) (0x63C0 | remaining));
+            short remaining = (short) p.getTriesRemaining();
+            ISOException.throwIt((short) (SW_VERIFY_FAIL_BASE + remaining));
         }
     }
 
@@ -350,17 +371,20 @@ public class MyFirstApplet extends Applet {
         byte[] buf = apdu.getBuffer();
         receiveExact(apdu, AMOUNT_LEN);
 
-        short addEuros = (short) (((buf[ISO7816.OFFSET_CDATA]     & 0xFF) << 8)
-                                   | (buf[ISO7816.OFFSET_CDATA + 1] & 0xFF));
-        short addCents = (short) (buf[ISO7816.OFFSET_CDATA + 2] & 0xFF);
-        if (addEuros < 0 || addCents < 0 || addCents > 99) {
+        short addEuros = Util.makeShort(buf[ISO7816.OFFSET_CDATA],
+                                        buf[(short) (ISO7816.OFFSET_CDATA + 1)]);
+        short addCents = (short) buf[(short) (ISO7816.OFFSET_CDATA + 2)];
+        if (addEuros < (short) 0 || addCents < (short) 0 || addCents > MAX_CENTS) {
             ISOException.throwIt(ISO7816.SW_WRONG_DATA);
         }
 
         // Cent-Addition mit Uebertrag
         short newCents = (short) (balanceCents + addCents);
-        short carry    = (newCents >= 100) ? (short) 1 : (short) 0;
-        if (carry == 1) newCents = (short) (newCents - 100);
+        short carry = (short) 0;
+        if (newCents >= (short) 100) {
+            carry = (short) 1;
+        }
+        if (carry == (short) 1) newCents = (short) (newCents - (short) 100);
         short newEuros = (short) (balanceEuros + addEuros + carry);
 
         // Overflow: > 9999,99 EUR
@@ -382,20 +406,23 @@ public class MyFirstApplet extends Applet {
         byte[] buf = apdu.getBuffer();
         receiveExact(apdu, AMOUNT_LEN);
 
-        short subEuros = (short) (((buf[ISO7816.OFFSET_CDATA]     & 0xFF) << 8)
-                                   | (buf[ISO7816.OFFSET_CDATA + 1] & 0xFF));
-        short subCents = (short) (buf[ISO7816.OFFSET_CDATA + 2] & 0xFF);
-        if (subEuros < 0 || subCents < 0 || subCents > 99) {
+        short subEuros = Util.makeShort(buf[ISO7816.OFFSET_CDATA],
+                                        buf[(short) (ISO7816.OFFSET_CDATA + 1)]);
+        short subCents = (short) buf[(short) (ISO7816.OFFSET_CDATA + 2)];
+        if (subEuros < (short) 0 || subCents < (short) 0 || subCents > MAX_CENTS) {
             ISOException.throwIt(ISO7816.SW_WRONG_DATA);
         }
 
         // Cent-Subtraktion mit Borrow
         short newCents = (short) (balanceCents - subCents);
-        short borrow   = (newCents < 0) ? (short) 1 : (short) 0;
-        if (borrow == 1) newCents = (short) (newCents + 100);
+        short borrow = (short) 0;
+        if (newCents < (short) 0) {
+            borrow = (short) 1;
+        }
+        if (borrow == (short) 1) newCents = (short) (newCents + (short) 100);
         short newEuros = (short) (balanceEuros - subEuros - borrow);
 
-        if (newEuros < 0) {
+        if (newEuros < (short) 0) {
             ISOException.throwIt(ISO7816.SW_FUNC_NOT_SUPPORTED);
         }
         balanceEuros = newEuros;
@@ -408,9 +435,8 @@ public class MyFirstApplet extends Applet {
     // =============================================================
     private void balance(APDU apdu) {
         byte[] buf = apdu.getBuffer();
-        buf[0] = (byte) ((balanceEuros >> 8) & 0xFF);
-        buf[1] = (byte) (balanceEuros & 0xFF);
-        buf[2] = (byte) (balanceCents & 0xFF);
+        Util.setShort(buf, (short) 0, balanceEuros);
+        buf[2] = (byte) balanceCents;
         apdu.setOutgoing();
         apdu.setOutgoingLength((short) 3);
         apdu.sendBytes((short) 0, (short) 3);
@@ -424,15 +450,20 @@ public class MyFirstApplet extends Applet {
     // =============================================================
     private void status(APDU apdu) {
         byte[] buf = apdu.getBuffer();
-        buf[0] = pin1Changed ? (byte) 1 : (byte) 0;
-        buf[1] = pin2Changed ? (byte) 1 : (byte) 0;
-        buf[2] = pin3Changed ? (byte) 1 : (byte) 0;
+        buf[0] = (byte) 0;
+        if (pin1Changed) buf[0] = (byte) 1;
+        buf[1] = (byte) 0;
+        if (pin2Changed) buf[1] = (byte) 1;
+        buf[2] = (byte) 0;
+        if (pin3Changed) buf[2] = (byte) 1;
         buf[3] = pin1.getTriesRemaining();
         buf[4] = pin2.getTriesRemaining();
         buf[5] = pin3.getTriesRemaining();
         buf[6] = puk.getTriesRemaining();
-        buf[7] = userDataSet ? (byte) 1 : (byte) 0;
-        buf[8] = cardBlocked ? (byte) 1 : (byte) 0;
+        buf[7] = (byte) 0;
+        if (userDataSet) buf[7] = (byte) 1;
+        buf[8] = (byte) 0;
+        if (cardBlocked) buf[8] = (byte) 1;
         apdu.setOutgoing();
         apdu.setOutgoingLength((short) 9);
         apdu.sendBytes((short) 0, (short) 9);
@@ -463,9 +494,12 @@ public class MyFirstApplet extends Applet {
 
         short age = (short) (tY - bY);
         // Geburtstag in diesem Jahr noch nicht erreicht -> ein Jahr abziehen
-        if (tM < bM || (tM == bM && tD < bD)) age--;
+        if (tM < bM || (tM == bM && tD < bD)) age = (short) (age - (short) 1);
 
-        buf[0] = (age >= 18) ? (byte) 0x01 : (byte) 0x00;
+        buf[0] = (byte) 0x00;
+        if (age >= 18) {
+            buf[0] = (byte) 0x01;
+        }
         apdu.setOutgoing();
         apdu.setOutgoingLength((short) 1);
         apdu.sendBytes((short) 0, (short) 1);
@@ -487,8 +521,8 @@ public class MyFirstApplet extends Applet {
                 cardBlocked = true;
                 ISOException.throwIt(ISO7816.SW_FILE_INVALID);
             }
-            short remaining = (short) (puk.getTriesRemaining() & 0x0F);
-            ISOException.throwIt((short) (0x63C0 | remaining));
+            short remaining = (short) puk.getTriesRemaining();
+            ISOException.throwIt((short) (SW_VERIFY_FAIL_BASE + remaining));
         }
         // PUK korrekt -> PIN3 neu setzen (resettet auch deren Versuchszaehler)
         pin3.update(buf, (short) (ISO7816.OFFSET_CDATA + PUK_SIZE), PIN_SIZE);
@@ -503,11 +537,14 @@ public class MyFirstApplet extends Applet {
         byte[] buf = apdu.getBuffer();
         short  out = 0;
         // Buffer noch nicht voll -> start bei 0; sonst aelteste (=logHead)
-        short start = (logCount < LOG_ENTRIES) ? (short) 0 : logHead;
+        short start = (short) 0;
+        if (logCount >= LOG_ENTRIES) {
+            start = logHead;
+        }
         for (short i = 0; i < logCount; i++) {
-            short idx = (short) ((start + i) % LOG_ENTRIES);
-            Util.arrayCopyNonAtomic(logBuf, (short) (idx * LOG_ENTRY_BYTES),
-                                    buf, out, LOG_ENTRY_BYTES);
+            short idx = (short) (start + i);
+            if (idx >= LOG_ENTRIES) idx = (short) (idx - LOG_ENTRIES);
+            Util.arrayCopyNonAtomic(logBuf, logOffset(idx), buf, out, LOG_ENTRY_BYTES);
             out = (short) (out + LOG_ENTRY_BYTES);
         }
         apdu.setOutgoing();
@@ -516,12 +553,12 @@ public class MyFirstApplet extends Applet {
     }
 
     private void logTransaction(byte type, short euros, byte cents) {
-        short off = (short) (logHead * LOG_ENTRY_BYTES);
+        short off = logOffset(logHead);
         logBuf[off]                = type;
-        logBuf[(short) (off + 1)]  = (byte) ((euros >> 8) & 0xFF);
-        logBuf[(short) (off + 2)]  = (byte) (euros & 0xFF);
+        Util.setShort(logBuf, (short) (off + 1), euros);
         logBuf[(short) (off + 3)]  = cents;
-        logHead = (short) ((logHead + 1) % LOG_ENTRIES);
+        logHead = (short) (logHead + (short) 1);
+        if (logHead >= LOG_ENTRIES) logHead = (short) 0;
         if (logCount < LOG_ENTRIES) logCount++;
     }
 }
