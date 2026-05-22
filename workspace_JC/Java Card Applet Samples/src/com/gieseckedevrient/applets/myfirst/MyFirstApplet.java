@@ -477,6 +477,9 @@ public class MyFirstApplet extends Applet {
     // 10 falsche Versuche -> Karte irreversibel gesperrt.
     // =============================================================
     private void unlock(APDU apdu) {
+        if (pin3.getTriesRemaining() != 0) {
+            ISOException.throwIt(ISO7816.SW_CONDITIONS_NOT_SATISFIED);
+        }
         byte[] buf = apdu.getBuffer();
         receiveExact(apdu, (short) (PUK_SIZE + PIN_SIZE));
         if (!puk.check(buf, ISO7816.OFFSET_CDATA, PUK_SIZE)) {
