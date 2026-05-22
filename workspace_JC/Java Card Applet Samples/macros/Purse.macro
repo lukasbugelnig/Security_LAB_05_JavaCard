@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Macro xmlns="http://www.gi-de.com/offcard/gptasks/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.gi-de.com/offcard/gptasks/1.0 TaskFile.xsd">
+ <Tasks>
+  <!--
+   Test-Skript fuer das Purse-Applet (Stufe 1: Auf-/Abbuchen).
+   Voraussetzung: Applet wurde frisch installiert (Balance = 0).
+   Bei Re-Run einfach "Run" in der JCS druecken - das installiert das
+   Applet neu und setzt damit alle persistenten Felder zurueck.
+  -->
+
+  <SelectAppletTask Name="Select Purse" Type="Applet">
+   <AppletInstanceAid>31 32 33 34 35 36</AppletInstanceAid>
+  </SelectAppletTask>
+
+  <!-- ============================================================
+       VERIFY
+       ============================================================ -->
+  <SendApduTask Name="Verify wrong PIN 1234 (expect 63 C2 = 2 tries left)">
+   <Command>00 20 00 00 04 31 32 33 34</Command>
+   <Answer>
+    <Sw>63 C2</Sw>
+   </Answer>
+  </SendApduTask>
+  <SendApduTask Name="Verify default PIN 0000 (expect 90 00)">
+   <Command>00 20 00 00 04 30 30 30 30</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- ============================================================
+       MODIFY + READ (Vorname Nachname DDMMYYYY)
+       ============================================================ -->
+  <SendApduTask Name="Modify user data (John Doe 01.01.2000)">
+   <Command>00 D6 00 00 12 4A 6F 68 6E FF 44 6F 65 FF 30 31 30 31 32 30 30 30 FF</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+  <SendApduTask Name="Read user data (expect John FF Doe FF 01012000 FF)">
+   <Command>00 B6 00 00 12</Command>
+   <Answer>
+    <Data>4A 6F 68 6E FF 44 6F 65 FF 30 31 30 31 32 30 30 30 FF</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- ============================================================
+       W01.4 b: MODIFY mit zu langem Vornamen (35 Byte, max 30)
+       MyFirst wuerde hier 6F 00 liefern (ArrayIndexOutOfBounds).
+       Unsere Purse weist es sauber mit 6A 80 zurueck und laesst
+       die bereits gespeicherten Daten unveraendert.
+       ============================================================ -->
+  <SendApduTask Name="Modify overlong name 35x A (expect 6A 80)">
+   <Command>00 D6 00 00 28 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 FF 44 6F 65 FF</Command>
+   <Answer>
+    <Sw>6A 80</Sw>
+   </Answer>
+  </SendApduTask>
+  <SendApduTask Name="Read again - data still John Doe (unchanged)">
+   <Command>00 B6 00 00 12</Command>
+   <Answer>
+    <Data>4A 6F 68 6E FF 44 6F 65 FF 30 31 30 31 32 30 30 30 FF</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- ============================================================
+       CREDIT / DEBIT / BALANCE
+       Format der Daten: [EUR_hi, EUR_lo, CENT]
+       ============================================================ -->
+  <SendApduTask Name="Balance initial (expect 00 00 00 = 0.00 EUR)">
+   <Command>00 50 00 00 03</Command>
+   <Answer>
+    <Data>00 00 00</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <SendApduTask Name="Credit 12.34 EUR">
+   <Command>00 30 00 00 03 00 0C 22</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+  <SendApduTask Name="Balance after credit (expect 00 0C 22 = 12.34)">
+   <Command>00 50 00 00 03</Command>
+   <Answer>
+    <Data>00 0C 22</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <SendApduTask Name="Debit 5.04 EUR">
+   <Command>00 40 00 00 03 00 05 04</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+  <SendApduTask Name="Balance after debit (expect 00 07 1E = 7.30)">
+   <Command>00 50 00 00 03</Command>
+   <Answer>
+    <Data>00 07 1E</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- ============================================================
+       Cent-Uebertrag testen (30 + 80 = 110 -> 1 EUR Uebertrag)
+       ============================================================ -->
+  <SendApduTask Name="Credit 0.80 EUR (carry test)">
+   <Command>00 30 00 00 03 00 00 50</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+  <SendApduTask Name="Balance (expect 00 08 0A = 8.10)">
+   <Command>00 50 00 00 03</Command>
+   <Answer>
+    <Data>00 08 0A</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- ============================================================
+       OVERFLOW-Test: Credit 9999.00 EUR auf bestehende 8.10
+       => Ergebnis waere 10007.10 > 9999.99 -> Ablehnung 6A 84
+       ============================================================ -->
+  <SendApduTask Name="Credit overflow 9999.00 (expect 6A 84)">
+   <Command>00 30 00 00 03 27 0F 00</Command>
+   <Answer>
+    <Sw>6A 84</Sw>
+   </Answer>
+  </SendApduTask>
+  <SendApduTask Name="Balance unchanged (expect 00 08 0A)">
+   <Command>00 50 00 00 03</Command>
+   <Answer>
+    <Data>00 08 0A</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- ============================================================
+       UNDERFLOW-Test: Debit 100.00 EUR von 8.10
+       ============================================================ -->
+  <SendApduTask Name="Debit underflow 100.00 (expect 6A 81)">
+   <Command>00 40 00 00 03 00 64 00</Command>
+   <Answer>
+    <Sw>6A 81</Sw>
+   </Answer>
+  </SendApduTask>
+  <SendApduTask Name="Balance unchanged (expect 00 08 0A)">
+   <Command>00 50 00 00 03</Command>
+   <Answer>
+    <Data>00 08 0A</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+ </Tasks>
+</Macro>
