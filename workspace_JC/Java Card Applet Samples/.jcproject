@@ -25,4 +25,14 @@
    <AppletName>MyFirstApplet</AppletName>
   </JCAppletParameters>
  </JCPackageParameters>
+ <JCPackageParameters>
+  <Aid SpecificName="PackageAid">31 32 33 34 35 AA FF CA FE FF AA</Aid>
+  <JCConverterOptions>-debug -out CAP EXP</JCConverterOptions>
+  <PackageName>com.gieseckedevrient.applets.purse</PackageName>
+  <PackageVersion>1.0</PackageVersion>
+  <JCAppletParameters>
+   <Aid SpecificName="AppletClassAid">31 32 33 34 35 36</Aid>
+   <AppletName>PurseApplet</AppletName>
+  </JCAppletParameters>
+ </JCPackageParameters>
 </JCProjectParameters>
