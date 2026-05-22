@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Macro xmlns="http://www.gi-de.com/offcard/gptasks/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.gi-de.com/offcard/gptasks/1.0 TaskFile.xsd">
+ <Tasks>
+  <!-- W01.4 j) Testlauf 2: Benutzerdaten (Modify / Read)
+       Voraussetzung : Purse_01_PIN ausgefuehrt (PIN1=1111, PIN2=2222)
+       Nachbedingung : Benutzerdaten = John Doe, 01.01.2000 -->
+
+  <SelectAppletTask Name="Select Purse" Type="Applet">
+   <AppletInstanceAid>31 32 33 34 32 36</AppletInstanceAid>
+  </SelectAppletTask>
+
+  <!-- PIN1 verifizieren (Schreiben erfordert PIN1) -->
+  <SendApduTask Name="Verify PIN1 1111">
+   <Command>00 20 00 01 04 31 31 31 31</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Benutzerdaten schreiben: John 0xFF Doe 0xFF 01012000 0xFF -->
+  <SendApduTask Name="Modify user data John Doe 01.01.2000">
+   <Command>00 D6 00 00 12 4A 6F 68 6E FF 44 6F 65 FF 30 31 30 31 32 30 30 30 FF</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Benutzerdaten mit PIN1 auslesen -->
+  <SendApduTask Name="Read user data with PIN1">
+   <Command>00 B6 00 00 12</Command>
+   <Answer>
+    <Data>4A 6F 68 6E FF 44 6F 65 FF 30 31 30 31 32 30 30 30 FF</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Modify mit zu langem Vornamen (31 x 'A') muss 6A 80 liefern -->
+  <SendApduTask Name="Modify overlong first name 31 chars (expect 6A 80)">
+   <Command>00 D6 00 00 2D 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 41 FF 44 6F 65 FF 30 31 30 31 32 30 30 30 FF</Command>
+   <Answer>
+    <Sw>6A 80</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Daten unveraendert nach abgelehntem Modify -->
+  <SendApduTask Name="Read: data unchanged after rejected Modify">
+   <Command>00 B6 00 00 12</Command>
+   <Answer>
+    <Data>4A 6F 68 6E FF 44 6F 65 FF 30 31 30 31 32 30 30 30 FF</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Auslesen auch mit PIN2 erlaubt -->
+  <SendApduTask Name="Verify PIN2 2222">
+   <Command>00 20 00 02 04 32 32 32 32</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <SendApduTask Name="Read user data with PIN2">
+   <Command>00 B6 00 00 12</Command>
+   <Answer>
+    <Data>4A 6F 68 6E FF 44 6F 65 FF 30 31 30 31 32 30 30 30 FF</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Status: Benutzerdaten nun gesetzt (Byte 7 = 01) -->
+  <SendApduTask Name="Status after Modify">
+   <Command>00 F2 00 00 09</Command>
+   <Answer>
+    <Data>01 01 01 03 03 03 0A 01 00</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+ </Tasks>
+</Macro>

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Macro xmlns="http://www.gi-de.com/offcard/gptasks/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.gi-de.com/offcard/gptasks/1.0 TaskFile.xsd">
+ <Tasks>
+  <!-- W01.4 j) Testlauf 5: Logbuch auslesen (FIFO, PIN3-geschuetzt)
+       Voraussetzung : Purse_03_Wallet ausgefuehrt
+                       Logbuch enthaelt 3 Eintraege:
+                         01 00 0C 22  Credit  12,34 EUR
+                         02 00 05 04  Debit    5,04 EUR
+                         01 00 00 50  Credit   0,80 EUR
+       Nachbedingung : unveraendert -->
+
+  <SelectAppletTask Name="Select Purse" Type="Applet">
+   <AppletInstanceAid>31 32 33 34 32 36</AppletInstanceAid>
+  </SelectAppletTask>
+
+  <!-- Logbuch ohne PIN3 muss 69 82 liefern -->
+  <SendApduTask Name="Read log without PIN3 (expect 69 82)">
+   <Command>00 76 00 00 0C</Command>
+   <Answer>
+    <Sw>69 82</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- PIN3 verifizieren -->
+  <SendApduTask Name="Verify PIN3 3333">
+   <Command>00 20 00 03 04 33 33 33 33</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Logbuch: 3 Eintraege x 4 Byte = 12 Byte (FIFO-Reihenfolge: aeltester zuerst) -->
+  <SendApduTask Name="Read log: 3 entries in FIFO order">
+   <Command>00 76 00 00 0C</Command>
+   <Answer>
+    <Data>01 00 0C 22 02 00 05 04 01 00 00 50</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+ </Tasks>
+</Macro>

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Macro xmlns="http://www.gi-de.com/offcard/gptasks/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.gi-de.com/offcard/gptasks/1.0 TaskFile.xsd">
+ <Tasks>
+  <!-- W01.4 j) Testlauf 6: Unlock per PUK
+       Voraussetzung : Purse_05_Log ausgefuehrt (PIN3 = 3333, noch 3 Versuche)
+       Nachbedingung : PIN3 = 4444 (neu gesetzt via PUK), Karte nicht gesperrt -->
+
+  <SelectAppletTask Name="Select Purse" Type="Applet">
+   <AppletInstanceAid>31 32 33 34 32 36</AppletInstanceAid>
+  </SelectAppletTask>
+
+  <!-- Drei falsche PIN3-Versuche -> PIN3 sperren -->
+  <SendApduTask Name="Verify wrong PIN3 0001 (expect 63 C2 = 2 tries left)">
+   <Command>00 20 00 03 04 30 30 30 31</Command>
+   <Answer>
+    <Sw>63 C2</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <SendApduTask Name="Verify wrong PIN3 0001 again (expect 63 C1 = 1 try left)">
+   <Command>00 20 00 03 04 30 30 30 31</Command>
+   <Answer>
+    <Sw>63 C1</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <SendApduTask Name="Verify wrong PIN3 0001 third time (expect 63 C0 = blocked)">
+   <Command>00 20 00 03 04 30 30 30 31</Command>
+   <Answer>
+    <Sw>63 C0</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Unlock mit falschem PUK (00000001) -> 63 C9 (9 PUK-Versuche verbleibend) -->
+  <SendApduTask Name="Unlock with wrong PUK 00000001 (expect 63 C9)">
+   <Command>00 78 00 00 0C 30 30 30 30 30 30 30 31 34 34 34 34</Command>
+   <Answer>
+    <Sw>63 C9</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Unlock mit korrektem PUK (00000000) und neuer PIN3 = 4444 -->
+  <SendApduTask Name="Unlock with correct PUK, set PIN3 to 4444">
+   <Command>00 78 00 00 0C 30 30 30 30 30 30 30 30 34 34 34 34</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Neue PIN3 verifizieren -->
+  <SendApduTask Name="Verify new PIN3 4444">
+   <Command>00 20 00 03 04 34 34 34 34</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Finalstatus: alle PINs geaendert, Benutzerdaten gesetzt, Karte nicht gesperrt -->
+  <SendApduTask Name="Final status">
+   <Command>00 F2 00 00 09</Command>
+   <Answer>
+    <Data>01 01 01 03 03 03 0A 01 00</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+ </Tasks>
+</Macro>

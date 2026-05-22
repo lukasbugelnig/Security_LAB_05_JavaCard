@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Macro xmlns="http://www.gi-de.com/offcard/gptasks/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.gi-de.com/offcard/gptasks/1.0 TaskFile.xsd">
+ <Tasks>
+  <!-- W01.4 j) Testlauf 3: Geldboerse (Credit / Debit / Balance / Age18)
+       Voraussetzung : Purse_02_UserData ausgefuehrt
+                       (alle PINs geaendert, Benutzerdaten = John Doe 01.01.2000)
+       Nachbedingung : Guthaben = 8,10 EUR, Logbuch 3 Eintraege
+                       Credit 12.34 | Debit 5.04 | Credit 0.80 -->
+
+  <SelectAppletTask Name="Select Purse" Type="Applet">
+   <AppletInstanceAid>31 32 33 34 32 36</AppletInstanceAid>
+  </SelectAppletTask>
+
+  <!-- Guthaben zu Beginn: 0,00 EUR -->
+  <SendApduTask Name="Balance initial 0.00 EUR">
+   <Command>00 50 00 00 03</Command>
+   <Answer>
+    <Data>00 00 00</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Age18-Blockierung: Debit ohne vorherige Age18-Pruefung muss 69 85 liefern -->
+  <SendApduTask Name="Verify PIN3 3333">
+   <Command>00 20 00 03 04 33 33 33 33</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <SendApduTask Name="Debit without Age18 check (expect 69 85)">
+   <Command>00 40 00 00 03 00 01 00</Command>
+   <Answer>
+    <Sw>69 85</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Age18 mit PIN1 oder PIN2: 22.05.2026, Inhaber geb. 01.01.2000 -> 26 J. -> true -->
+  <SendApduTask Name="Verify PIN1 1111 (for Age18)">
+   <Command>00 20 00 01 04 31 31 31 31</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <SendApduTask Name="Age18 on 22.05.2026 (expect true = 01)">
+   <Command>00 18 00 00 08 32 32 30 35 32 30 32 36 01</Command>
+   <Answer>
+    <Data>01</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Credit 12,34 EUR (PIN2) -->
+  <SendApduTask Name="Verify PIN2 2222">
+   <Command>00 20 00 02 04 32 32 32 32</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <SendApduTask Name="Credit 12.34 EUR">
+   <Command>00 30 00 00 03 00 0C 22</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <SendApduTask Name="Balance after Credit 12.34 EUR">
+   <Command>00 50 00 00 03</Command>
+   <Answer>
+    <Data>00 0C 22</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Debit 5,04 EUR (PIN3, ageVerified gesetzt) -->
+  <SendApduTask Name="Debit 5.04 EUR">
+   <Command>00 40 00 00 03 00 05 04</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <SendApduTask Name="Balance after Debit 5.04 EUR = 7.30 EUR">
+   <Command>00 50 00 00 03</Command>
+   <Answer>
+    <Data>00 07 1E</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Credit 0,80 EUR: Cent-Uebertrag 30+80=110 -> 1 EUR Uebertrag, 10 Cent Rest -->
+  <SendApduTask Name="Verify PIN2 2222 (re-verify for second Credit)">
+   <Command>00 20 00 02 04 32 32 32 32</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <SendApduTask Name="Credit 0.80 EUR (carry test)">
+   <Command>00 30 00 00 03 00 00 50</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <SendApduTask Name="Balance after carry = 8.10 EUR">
+   <Command>00 50 00 00 03</Command>
+   <Answer>
+    <Data>00 08 0A</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+ </Tasks>
+</Macro>

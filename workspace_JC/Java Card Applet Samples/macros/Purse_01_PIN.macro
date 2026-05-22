@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Macro xmlns="http://www.gi-de.com/offcard/gptasks/1.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.gi-de.com/offcard/gptasks/1.0 TaskFile.xsd">
+ <Tasks>
+  <!-- W01.4 j) Testlauf 1: PIN-Management
+       Voraussetzung : frisch installierte Karte (alle PINs = ASCII 0000)
+       Nachbedingung : PIN1=1111, PIN2=2222, PIN3=3333 (alle einmalig geaendert) -->
+
+  <SelectAppletTask Name="Select Purse" Type="Applet">
+   <AppletInstanceAid>31 32 33 34 32 36</AppletInstanceAid>
+  </SelectAppletTask>
+
+  <!-- Status initial: keine PIN geaendert, je 3 Versuche, PUK 10 Versuche -->
+  <SendApduTask Name="Status initial">
+   <Command>00 F2 00 00 09</Command>
+   <Answer>
+    <Data>00 00 00 03 03 03 0A 00 00</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Read ohne verifizierte PIN muss 69 82 liefern -->
+  <SendApduTask Name="Read without PIN (expect 69 82)">
+   <Command>00 B6 00 00 12</Command>
+   <Answer>
+    <Sw>69 82</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Falsche PIN1: 1234 -> 63 C2 (2 Versuche verbleibend) -->
+  <SendApduTask Name="Verify wrong PIN1 1234 (expect 63 C2)">
+   <Command>00 20 00 01 04 31 32 33 34</Command>
+   <Answer>
+    <Sw>63 C2</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Richtige PIN1 Default 0000 -> zaehler auf 3 zurueck -->
+  <SendApduTask Name="Verify default PIN1 0000">
+   <Command>00 20 00 01 04 30 30 30 30</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Change PIN2 vor PIN1 muss 69 85 liefern (falsche Reihenfolge) -->
+  <SendApduTask Name="Change PIN2 before PIN1 (expect 69 85)">
+   <Command>00 24 00 02 04 32 32 32 32</Command>
+   <Answer>
+    <Sw>69 85</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Change PIN3 vor PIN1 muss 69 85 liefern -->
+  <SendApduTask Name="Change PIN3 before PIN1 (expect 69 85)">
+   <Command>00 24 00 03 04 33 33 33 33</Command>
+   <Answer>
+    <Sw>69 85</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- PIN1 auf 1111 aendern -->
+  <SendApduTask Name="Change PIN1 to 1111">
+   <Command>00 24 00 01 04 31 31 31 31</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Wiederholtes Aendern von PIN1 muss 69 85 liefern -->
+  <SendApduTask Name="Change PIN1 again (expect 69 85)">
+   <Command>00 24 00 01 04 39 39 39 39</Command>
+   <Answer>
+    <Sw>69 85</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Neue PIN1 verifizieren -->
+  <SendApduTask Name="Verify new PIN1 1111">
+   <Command>00 20 00 01 04 31 31 31 31</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- PIN2 Default verifizieren und aendern -->
+  <SendApduTask Name="Verify default PIN2 0000">
+   <Command>00 20 00 02 04 30 30 30 30</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <SendApduTask Name="Change PIN2 to 2222">
+   <Command>00 24 00 02 04 32 32 32 32</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Wiederholtes Aendern von PIN2 muss 69 85 liefern -->
+  <SendApduTask Name="Change PIN2 again (expect 69 85)">
+   <Command>00 24 00 02 04 39 39 39 39</Command>
+   <Answer>
+    <Sw>69 85</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- PIN3 Default verifizieren und aendern -->
+  <SendApduTask Name="Verify default PIN3 0000">
+   <Command>00 20 00 03 04 30 30 30 30</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <SendApduTask Name="Change PIN3 to 3333">
+   <Command>00 24 00 03 04 33 33 33 33</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Status nach Aenderung aller PINs: geaendert-Flags gesetzt -->
+  <SendApduTask Name="Status after all PIN changes">
+   <Command>00 F2 00 00 09</Command>
+   <Answer>
+    <Data>01 01 01 03 03 03 0A 00 00</Data>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Falsche neue PIN3: 0001 (2 Versuche verbleibend) -->
+  <SendApduTask Name="Verify wrong PIN3 0001 (expect 63 C2)">
+   <Command>00 20 00 03 04 30 30 30 31</Command>
+   <Answer>
+    <Sw>63 C2</Sw>
+   </Answer>
+  </SendApduTask>
+
+  <!-- Richtige neue PIN3 3333 -> zaehler auf 3 zurueck -->
+  <SendApduTask Name="Verify correct PIN3 3333 (counter reset)">
+   <Command>00 20 00 03 04 33 33 33 33</Command>
+   <Answer>
+    <Sw>90 00</Sw>
+   </Answer>
+  </SendApduTask>
+
+ </Tasks>
+</Macro>
