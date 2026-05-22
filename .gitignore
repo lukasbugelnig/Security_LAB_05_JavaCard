@@ -1,0 +1,15 @@
+# JavaCard build output (regenerated at uni PC)
+**/bin/
+*.class
+*.cap
+*.exp
+*.jca
+
+# Eclipse / JavaCard Suite workspace cruft
+.metadata/
+*.log
+RemoteSystemsTempFiles/
+
+# OS
+.DS_Store
+Thumbs.db
